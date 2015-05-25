@@ -43,13 +43,13 @@ class PayNow
 	 *
 	 * Must be kept private and well stored !
 	 */
-	private $_intergration_key;
+	private $_integration_key;
 
 	/**
-	 * Paynow Merchant Intergration ID
+	 * Paynow Merchant integration ID
 	 * Must be set in contrsuctor using config
 	 */
-	private $_intergration_id;
+	private $_integration_id;
 
 	/**
 	 * Paynow API url to init transaction
@@ -95,11 +95,19 @@ class PayNow
 	{
 		if( empty($config['id']) or empty($config['key'])  )
 			die('PayNow Invalid Config Passed: ' . __FILE__ . ':' . __LINE__ );
-		$this->_intergration_key = $config['key'];
-		$this->_intergration_id = $config['id'];
+		$this->_integration_key = $config['key'];
+		$this->_integration_id = $config['id'];
 		$this->_result_url = $config['result_url'];
 		//check return url
 		$this->_return_url = (isset($config['return_url'])  ? $config['return_url'] : '' );
+
+		$this->_empty_transaction_request = array( 
+		'reference' => '' , //Merchant Transaction ID 
+		'amount' => 0.00 ,  //Amount
+		'additionalinfo' => '' , //Additional info
+		'returnurl' =>'' , //URL to redirect the user to after payment
+		'authemail' => '' //User email . Recommended to be set to nothing
+		);
 	}
 
 	/**
@@ -142,8 +150,7 @@ class PayNow
 	 public function make_transaction( $reference , $amount , $additionalinfo = '' , $return_url = '')
 	 {
 	 	$transaction = $this->_empty_transaction_request;
-	 	//validate parameters
-	 
+	 	
 	 	$transaction['reference'] = $reference;
 	 	$transaction['amount'] = $amount;
 	 	$transaction['additionalinfo'] = $additionalinfo;
@@ -229,7 +236,7 @@ class PayNow
 			$data .= $value;
 		}
 		//append secret key
-		$data .= $this->_intergration_key;
+		$data .= $this->_integration_key;
 
 		$hash = strtoupper( hash('sha512' , $data ) );
 		return $hash;
