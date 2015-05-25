@@ -34,6 +34,9 @@ Example Usage:
 
 ```
 
-* The PayNow API is object oriented nd currently supports all functionality of the PayNow API *
+Pay4App Zimbabwe
+------------
+
+
 
 
