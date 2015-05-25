@@ -143,16 +143,7 @@ class PayNow
 	 {
 	 	$transaction = $this->_empty_transaction_request;
 	 	//validate parameters
-	 	if( ! is_string($reference) or ! is_string($additionalinfo) or ! is_string($return_url) )
-	 	{
-	 		return array();
-	 	}
-	 	//check amount
-	 	if( ! is_numeric($amount))
-	 	{
-	 		return array();
-	 	}
-
+	 
 	 	$transaction['reference'] = $reference;
 	 	$transaction['amount'] = $amount;
 	 	$transaction['additionalinfo'] = $additionalinfo;
