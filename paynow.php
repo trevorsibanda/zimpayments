@@ -157,6 +157,7 @@ class PayNow
 	 	$transaction['amount'] = $amount;
 	 	$transaction['additionalinfo'] = $additionalinfo;
 	 	$transaction['returnurl'] = ( empty($return_url)  ? $this->_return_url  : $return_url );
+	 	return $transaction;
 	 }
 
 	/**
