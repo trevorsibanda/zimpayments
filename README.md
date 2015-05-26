@@ -36,7 +36,10 @@ Example Usage:
 
 Pay4App Zimbabwe
 ------------
+Coming soon
 
+VPayments Zimbabwe
+------------
 
-
+Coming soon
 
