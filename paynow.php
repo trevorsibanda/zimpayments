@@ -262,7 +262,7 @@ class PayNow
 	    if( $request == 'POST')  
 	    {
 	    	curl_setopt($ch, CURLOPT_POST, true);
-	    	curl_setopt($ch, CURLOPT_POST, true);
+	    	curl_setopt($ch,CURLOPT_POSTFIELDS, $post_data);
 	    }	  
 	    else
 	    {
