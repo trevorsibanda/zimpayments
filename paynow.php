@@ -229,14 +229,16 @@ class PayNow
 	protected function generate_hash( $transaction )
 	{
 		$data = '';
-		foreach(  $transaction as $key => $value )
-		{
-			if( is_null($value ) or ! is_string($value) )
-			{
-				continue;
-			}
-			$data .= $value;
-		}
+		$data .= $transaction['resulturl'];
+		$data .= $transaction['returnurl'];
+		$data .= $transaction['reference'];
+		$data .= $transaction['amount'];
+		$data .= $transaction['id'];
+		$data .= $transaction['additionalinfo'];
+		$data .= $transaction['authemail'];
+		$data .= $transaction['status'];
+		// resulturl + returnurl + reference + amount + id + additionalinfo + authemail + status + merchant_key
+
 		//append secret key
 		$data .= $this->_integration_key;
 
