@@ -1,11 +1,13 @@
 <?php
 /**
- * CI PayNow 
+ * PayNow Payment API
  *
+ * A much simpler library to use for custom integration into PayNow API
+ * The API currently supports all of the functionality provided in the API
  *
  * @author 		Trevor Sibanda<trevorsibb@gmail.com>
  * @date 		25 May 2015 Africa Day !
- *
+ * @version 		0.1
  *
  * Sample usage:
  *
