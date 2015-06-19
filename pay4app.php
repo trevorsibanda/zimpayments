@@ -159,6 +159,7 @@ class Pay4App
        if( ! $this->_is_ready() )
         die('Pay4App: Make sure api_secret and merchant_id are passed ');
         $form = array();
+        $form['form_action'] = 'https://pay4app.com/checkout.php';
         $form['amount'] = $amount;
         $form['orderid'] = $order_id;
         $form['merchantid'] = $this->merchant_id();
@@ -302,7 +303,7 @@ class Pay4App
       */ 
        private function _is_ready(  )
        {
-         if( is_null($this->api_secret) or is_null($this->merchant_id)  )
+         if( is_null($this->api_secret()) or is_null($this->merchant_id())  )
             return False;
          return True;    
        }
