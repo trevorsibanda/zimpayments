@@ -62,10 +62,11 @@ $form_data  =$pay4app->make_form( $order_id , $order_amount );
 ?>
 <html>
 <body>
-<form method="post" action="https://pay4app.com/v1/" >
+<form method="post" action="https://pay4app.com/checkout.php" >
 <?php foreach(  $form_data as $key=>$value ): ?>
  <input type="hidden" name="<?= $key ?>" value="<?= $value ?>" />
 <?php endforeach; ?>
+ <input type="submit" value="Pay $<?php printf('%f.2' , $order_amount ); ?>" /> 
 </form>
 ``` 
 
