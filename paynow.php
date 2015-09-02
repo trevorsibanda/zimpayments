@@ -6,8 +6,8 @@
  * The API currently supports all of the functionality provided in the API
  *
  * @author 		Trevor Sibanda<trevorsibb@gmail.com>
- * @date 		25 May 2015 Africa Day !
- * @version 		0.1
+ * @date 		2 Sept 2015 
+ * @version 		0.2
  *
  * Sample usage:
  *
@@ -19,16 +19,16 @@
  * $paynow = new PayNow( array('id' => PAYNOW_ID , 'key' => PAYNOW_KEY) );
  * $paynow->set_result_url('https://myapp.com/callback.php?gateway=paynow');
  *
- * $reference = 0; //get reference from database. must be unique 
+ * $reference = rand(); //get reference from database. must be unique 
  *
- * $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying')
+ * $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying');
  * $response = $paynow->init_transaction($transaction);
  *
  * if( isset($response['error']) ){  }
  *
- * if( $response['status'] !== 'ok' )
+ * if( $response['status'] !== PayNow::ps_ok )
  * {
- *	die('hashes mismatch'); 	
+ *	die($response['msg']); 	
  * }
  * //redirect user to paynow pay url if everything ok
  * header('Location: ' . $response['browserurl']); 
@@ -39,6 +39,17 @@
 
 class PayNow
 {
+
+	/** Paynow status responses **/
+	const  ps_error=  'Error';
+	const  ps_ok = 'Ok';
+	const  ps_created_but_not_paid = 'created but not paid';
+	const  ps_cancelled = 'cancelled';
+	const  ps_failed = 'failed';
+	const  ps_paid = 'paid';
+	const  ps_awaiting_delivery = 'awaiting delivery';
+	const  ps_delivered = 'delivered';
+	const  ps_awaiting_redirect = 'awaiting redirect';
 
 	/**
 	 * PayNow Integration Key
@@ -87,6 +98,13 @@ class PayNow
 		'authemail' => '' //User email . Recommended to be set to nothing
 		);
 
+	/**
+	 * Use Curl ?
+	 *
+	 */
+	private $_use_curl = False;
+
+
 	/** ctor 
  	 *
  	 * @param 	Array 		$	PayNow Config (Integration keys)
@@ -100,6 +118,7 @@ class PayNow
 		$this->_integration_key = $config['key'];
 		$this->_integration_id = $config['id'];
 		$this->_result_url = $config['result_url'];
+		$this->_use_curl =  isset($config['use_curl']) ? $config['use_curl'] : False;
 		//check return url
 		$this->_return_url = (isset($config['return_url'])  ? $config['return_url'] : '' );
 
@@ -171,22 +190,23 @@ class PayNow
 	{
 		//reorder to paynow order wich is utterly stupid and pathetic on Paynow's part !!!
 		$paynow_ordered = array(
-			'resulturl' => $this->_result_url ,  
-            'returnurl' =>  ( empty( $transaction['returnurl'] ) ? $this->_return_url : $transaction['returnurl'] ),  
-            'reference' =>  $transaction['reference'],  
-            'amount' =>  $transaction['amount'],  
-            'id' =>  $this->_integration_id,  
-            'additionalinfo' =>  $transaction['additionalinfo'],  
-            'authemail' =>  $transaction['authemail'],  
-            'status' =>  'Message');
+			'resulturl' => utf8_decode( $this->_result_url ) ,  
+            'returnurl' =>  utf8_encode( empty( $transaction['returnurl'] ) ? $this->_return_url : $transaction['returnurl'] ),  
+            'reference' =>  utf8_encode($transaction['reference']),  
+            'amount' =>  utf8_encode($transaction['amount']),  
+            'id' =>  utf8_encode($this->_integration_id),  
+            'additionalinfo' =>  utf8_encode($transaction['additionalinfo']),  
+            'authemail' =>  utf8_encode($transaction['authemail']),  
+            'status' =>  utf8_encode('Message') );
 
-		$hash = $this->generate_hash(  $paynow_ordered );
 		
 		//post data
-		$post_data = $this->make_http_request_param( $paynow_ordered , $hash );
+		//$post_data = $this->make_http_request_param( $paynow_ordered );
 
+		$paynow_ordered["hash"] = utf8_encode( strtoupper( $this->generate_hash($paynow_ordered) ) );
+		
 		//perform request
-		$this->_http_data = $this->http_request( $this->_init_transaction_url , 'POST' , $post_data );
+		$this->_http_data = $this->http_request( $this->_init_transaction_url , 'POST' , $paynow_ordered );
 		if( is_null($this->_http_data) )
 		{
 			return array();
@@ -206,8 +226,8 @@ class PayNow
 	 */
 	public function poll_transaction(  $poll_url )
 	{
-		$post_data = '';
-		$this->_http_data = $this->http_request($poll_url, 'POST' , $post_data);
+		$post_data = null;
+		$this->_http_data = $this->http_request($poll_url, 'GET' , $post_data);
 		if( is_null($this->_http_data) )
 		{
 			return array();
@@ -228,22 +248,16 @@ class PayNow
 	 */
 	protected function generate_hash( $transaction )
 	{
-		$data = '';
-		$data .= $transaction['resulturl'];
-		$data .= $transaction['returnurl'];
-		$data .= $transaction['reference'];
-		$data .= $transaction['amount'];
-		$data .= $transaction['id'];
-		$data .= $transaction['additionalinfo'];
-		$data .= $transaction['authemail'];
-		$data .= $transaction['status'];
-		// resulturl + returnurl + reference + amount + id + additionalinfo + authemail + status + merchant_key
-
-		//append secret key
-		$data .= $this->_integration_key;
-
-		$hash = strtoupper( hash('sha512' , $data ) );
-		return $hash;
+		$string = "";
+		foreach($transaction as $key=>$value) {
+			if( strtoupper($key) != "HASH" ){
+				$string .= $value;
+			}
+		}
+		$string .= $this->_integration_key;
+		
+		$hash = hash("sha512", $string);
+		return strtoupper($hash);
 	}
 
 	/**
@@ -252,58 +266,73 @@ class PayNow
 	 *
 	 * @param 		String 		$	Url to request
 	 * @param 		String 		$ 	Request type ( get , post )
-	 * @param 		String 		$	Data to Post. Ignored if HTTP request
+	 * @param 		Array 		$	Data to Post. Ignored if HTTP request
 	 *
 	 * @return 		Mixed 		$	Http Response data 
 	 */
-	protected function http_request( $url , $request = 'POST' ,   $post_data = Null )
+	protected function http_request( $url , $method = 'POST' ,   $post_data = Null )
 	{
-		$ch = curl_init();    
-	    curl_setopt($ch, CURLOPT_URL, $url);
-	    
-	    if( $request == 'POST')  
-	    {
-	    	curl_setopt($ch, CURLOPT_POST, true);
-	    	curl_setopt($ch,CURLOPT_POSTFIELDS, $post_data);
-	    }	  
-	    else
-	    {
-	    	curl_setopt($ch, CURLOPT_GET , true );
-	    }	
-	    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);  
-	  
-	    //execute post  
-	    $result = curl_exec($ch);  
-	  
-	    if($result)  
-	    {  
-	    	$data = $result;
-	    	curl_close($ch);
-	    	return $data;
-	    }
-	    else
-	    {
-	    	$this->_error = curl_error($ch);
-	    	return Null;
-	    }
+		if( $this->_use_curl )
+		{
 
+			$ch = curl_init();
+
+			//set the url, number of POST vars, POST data
+			curl_setopt($ch, CURLOPT_URL, $url );
+			if( $method == 'POST')
+			{
+				$post_data = $this->urlify($post_data);
+				curl_setopt($ch, CURLOPT_POST, true);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data );
+			}
+			if( $method == 'GET')
+				curl_setopt($ch, CURLOPT_POST, false);
+			
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+			//execute post
+			$result = curl_exec($ch);
+
+			curl_close($ch);
+
+			return $result;
+		}
+		else
+		{
+			$data = $this->rest_helper($url, $post_data , $method , '' );	
+		}
+		
+		return $data;
 	}
 
-	protected function make_http_request_param( $transaction , $hash )
+	protected function make_http_request_param( $transaction  )
 	{
-		$fields = array();  
-         
-        $transaction["hash"] = urlencode( $hash );  
-        $fields_string = '';
-        $delim  = '';
-        foreach( $transaction as  $key => $value )
-        {
-        	$param = ( $delim . $key . '=' . urlencode($value ) ); 
-        	$fields_string .= $param;
-        	$delim = '&';
-        }  
-        return $fields_string; 
+		$fields = array();
+		foreach($transaction as $key=>$value) {
+		   $fields[$key] = urlencode($value);
+		}
+
+		$transaction["hash"] = $this->generate_hash($transaction) ;
+
+		//$fields_string = $this->urlify($fields);
+		return $transaction;
     }
+
+
+    protected function urlify( $fields )
+    {
+    	$delim = "";
+		$fields_string = "";
+		foreach($fields as $key=>$value) {
+			$fields_string .= $delim . $key . '=' . $value;
+			$delim = "&";
+		}
+
+		return $fields_string;
+    }
+
+
 	/**
 	 * Convert data obtained from PayNow API into an Array
 	 *
@@ -331,5 +360,70 @@ class PayNow
   		return $result;  
 	}
 
+	/**
+	 * Rest helper
+	 *
+	 * @param 		String 	$url 		Url
+	 * @param 		Mixed 	$params 	Parameters, string or array
+	 * @param 		String 	$verb 		HTTP VERB
+	 * @param 		String 	$format 	Format
+	 *
+	 * @return 		Mixed 	$			Depending on format, returns array, object or string. returns False on Fail
+	 */
+	function rest_helper($url, $params = null, $verb = 'GET', $format = 'json')
+	{
+	  $cparams = array(
+	    'http' => array(
+	      'method' => $verb,
+	      'ignore_errors' => true
+	    )
+	  );
+	  if ($params !== null) {
+	    $params = http_build_query($params);
+	    if ($verb == 'POST') {
+	      $cparams['http']['content'] = $params;
+	    } else {
+	      $url .= '?' . $params;
+	    }
+	  }
+
+	  $context = stream_context_create($cparams);
+	  $fp = @fopen($url, 'rb', false, $context);
+	  if (!$fp) {
+	    $res = false;
+	  } else {
+	    // If you're trying to troubleshoot problems, try uncommenting the
+	    // next two lines; it will show you the HTTP response headers across
+	    // all the redirects:
+	    // $meta = stream_get_meta_data($fp);
+	    // var_dump($meta['wrapper_data']);
+	    $res = stream_get_contents($fp);
+	  }
+
+	  if ($res === false) {
+	    return False;
+	  }
+
+	  switch ($format) {
+	    case 'json':
+	      $r = json_decode($res);
+	      if ($r === null) {
+	        return $r;
+	      }
+	      return $r;
+
+	    case 'xml':
+	      $r = simplexml_load_string($res);
+	      if ($r === null) {
+	        return $r;
+	      }
+	      return $r;
+	  }
+	  return $res;
+	}
+
 
 }
+
+
+
