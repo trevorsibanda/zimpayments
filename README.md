@@ -4,7 +4,7 @@ A list of curated resources to help developers integrate with Zimbabwean payment
 PayNow Zimbabwe
 -------
 
-Paynow is a trading name of Softwarehouse (Private) Limited, a Payment Service Provider which is a member of the Webdev Group. Webdev was established in 2001 and remains the market leader 'all things online'. We develop and maintain software solutions for several blue chip financial institutions in Zimbabwe and the SADC region. Other Webdev online properties in Zimbabwe include www.classifieds.co.zw, www.property.co.zw, www.txt.co.zw. 
+Paynow is a trading name of Softwarehouse (Private) Limited, a Payment Service Provider which is a member of the Webdev Group. Supports EcoCash, TeleCash, ZimSwitch, Mastercard and Visa
 
 Example Usage:
 
@@ -18,14 +18,14 @@ Example Usage:
  
  $reference = 0; //get reference from database. must be unique 
  
- $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying')
+ $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying');
  $response = $paynow->init_transaction($transaction);
  
  if( isset($response['error']) ){  }
  
- if( $response['status'] !== 'ok' )
+ if( $response['status'] !== PayNow::ps_ok )
  {
- 	die('hashes mismatch'); 	
+ 	die($response['msg']); 	
   }
   //redirect user to paynow pay url if everything ok
   header('Location: ' . $response['browserurl']); 
