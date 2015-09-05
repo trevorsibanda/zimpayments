@@ -21,14 +21,31 @@ Example Usage:
  $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying');
  $response = $paynow->init_transaction($transaction);
  
- if( isset($response['error']) ){  }
- 
- if( $response['status'] !== PayNow::ps_ok )
+ if( $response['status'] != PayNow::ps_ok )
  {
- 	die($response['msg']); 	
-  }
+   die('Error occured - ' . $response['msg'] );
+ }
+ //validate authenticity of response
+ if( ! $paynow->is_valid_init_response( $response ) )
+ {
+   die('Potential MITM attack on your server, hashes do not match ! ');
+ }
   //redirect user to paynow pay url if everything ok
   header('Location: ' . $response['browserurl']); 
+ 
+
+ //to poll a url
+ $url = 'https://paynow.co.zw/pollurl';
+ $response = $paynow->poll_transaction( $url );
+ if( $paynow->is_valid_poll_response( $response ) )
+ {
+  //safe to use 
+ }else
+ {
+  die('Alert admin !');
+ }
+ 
+ 
  
  *?>
 
