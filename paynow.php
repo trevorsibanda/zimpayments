@@ -5,8 +5,8 @@
  * A much simpler library to use for custom integration into PayNow API
  * The API currently supports all of the functionality provided in the API
  *
- * @author 		Trevor Sibanda<trevorsibb@gmail.com>
- * @date 		2 Sept 2015 
+ * @author 		Trevor Sibanda <trevor@base2theory.com>
+ * @date 		5 Sept 2015 
  * @version 		0.2
  *
  * Sample usage:
@@ -21,7 +21,7 @@
  *
  * $reference = rand(); //get reference from database. must be unique 
  *
- * $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying');
+ * $transaction = $paynow->make_transaction($reference , 12.00 , 'Payment for something' , 'http://myapp.com/thank-you-for-paying')
  * $response = $paynow->init_transaction($transaction);
  *
  * if( isset($response['error']) ){  }
@@ -67,7 +67,7 @@ class PayNow
 	/**
 	 * Paynow API url to init transaction
 	 */
-	private $_init_transaction_url = 'https://www.paynow.co.zw/interface/initiatetransaction';
+	private $_init_transaction_url =  'https://www.paynow.co.zw/interface/initiatetransaction';
 
 	/**
 	 * PayNow Callback Url
@@ -104,6 +104,9 @@ class PayNow
 	 */
 	private $_use_curl = False;
 
+	private $_use_proxy = False;
+	private $_proxy = 'localhost:8082';
+
 
 	/** ctor 
  	 *
@@ -117,8 +120,10 @@ class PayNow
 			die('PayNow Invalid Config Passed: ' . __FILE__ . ':' . __LINE__ );
 		$this->_integration_key = $config['key'];
 		$this->_integration_id = $config['id'];
-		$this->_result_url = $config['result_url'];
+		$this->_result_url = isset( $config['result_url'] ) ? $config['result_url'] : '';
 		$this->_use_curl =  isset($config['use_curl']) ? $config['use_curl'] : False;
+		$this->_use_proxy =  isset($config['use_proxy']) ? $config['use_proxy'] : False;
+		$this->_proxy =  isset($config['proxy']) ? $config['proxy'] : False;
 		//check return url
 		$this->_return_url = (isset($config['return_url'])  ? $config['return_url'] : '' );
 
@@ -142,6 +147,8 @@ class PayNow
 	 {
 	 	$this->_result_url = $url;
 	 }
+
+	 
 
 	 /**
 	  * Set return url
@@ -218,6 +225,61 @@ class PayNow
 	}
 
 	/**
+	 * Validate the authenticity of a poll update message.
+	 *
+	 * Pass the global $_POST variable as a parameter. AVoid passing $_REQUEST
+	 *
+	 * @param 		Array 		$	global $_POST variable
+	 *
+	 * @return 		Bool
+	 */
+	public function is_valid_status_update( $_post_ )
+	{
+		if( ! is_array($_post_))
+			return False;
+		$hash = $this->generate_hash(  $_post_ );
+		return ( $hash == $_post_['hash'] );
+	}
+
+	/**
+	 * Validate the authenticity of an init transaction response.
+	 *
+	 * Pass the result from initiate_transaction
+	 *
+	 * @param 		Array 		$	global $_POST variable
+	 *
+	 * @return 		Bool
+	 */
+	public function is_valid_init_response( $response )
+	{
+		if( ! is_array($response))
+			return False;
+		$hash = $this->generate_hash( $response );
+		if( $hash != $response['hash'] )
+		{
+			return False;
+		}
+		return True;
+	}
+
+	/**
+	 * Validate the authenticity of a poll url response.
+	 *
+	 * Pass the result obtained from calling the poll url
+	 *
+	 * @param 		Array 		$	poll url result
+	 *
+	 * @return 		Bool
+	 */
+	public function is_valid_poll_response( $poll_result )
+	{
+		if( ! is_array($poll_result))
+			return False;
+		$hash = $this->generate_hash( $poll_result );
+		return (  $hash == $poll_result['hash'] );
+	}
+
+	/**
 	 * Poll Paynow for the status of a transaction
 	 *
 	 * @param 		String 		$	Poll Url as stored in the initiated transaction.
@@ -287,6 +349,15 @@ class PayNow
 			}
 			if( $method == 'GET')
 				curl_setopt($ch, CURLOPT_POST, false);
+
+			if( $this->_use_proxy )
+			{
+				//socks proxy
+				curl_setopt($ch, CURLOPT_PROXY, $this->_proxy);
+				curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS5);
+				
+
+			}
 			
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
